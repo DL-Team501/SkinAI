@@ -4,6 +4,7 @@ import torch.nn as nn
 from src.models.ingredients_tokenizer import CosmeticIngredientTokenizer
 from src.models.transformer import TransformerEncoderModel
 from src.models.classification_head import ClassificationHead
+from src.training_config import training_device
 
 
 def preprocess_ingredients(ingredient_list, tokenizer, max_length):
@@ -20,8 +21,8 @@ class CosmeticEfficacyModel(nn.Module):
         super().__init__()
         self.max_length = max_length
         self.tokenizer = CosmeticIngredientTokenizer(ingredient_dict)  # Load your ingredient dictionary
-        self.transformer_encoder = TransformerEncoderModel(max_length, **kwargs)
-        self.classification_head = ClassificationHead(kwargs['d_model'], num_classes)
+        self.transformer_encoder = TransformerEncoderModel(max_length, **kwargs).to(training_device)
+        self.classification_head = ClassificationHead(kwargs['d_model'], num_classes).to(training_device)
 
     def forward(self, ingredient_lists):
         token_ids_list = [preprocess_ingredients(ingredient_list, self.tokenizer, self.max_length)

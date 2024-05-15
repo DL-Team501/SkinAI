@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader, Dataset, random_split
 
 from src.models.ingredients_classification_model import CosmeticEfficacyModel, preprocess_ingredients
 from src.models.ingredients_tokenizer import CosmeticIngredientTokenizer
+from src.training_config import training_device
 
 
 class CosmeticIngredientsDataset(Dataset):
@@ -88,9 +89,8 @@ def load_data():
 # **Training Function**
 def train_model(model, train_loader, val_loader, epochs, learning_rate, experiment_name):
     """Trains the model and logs metrics to MLflow."""
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(device)
-    model.to(device)
+    print(training_device)
+    model.to(training_device)
 
     optimizer = Adam(model.parameters(), lr=learning_rate)
     criterion = nn.BCEWithLogitsLoss()  # For multi-label classification
@@ -107,7 +107,7 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
             for batch in train_loader:
                 print("here")
                 ingredients, labels = batch
-                ingredients, labels = ingredients.to(device), labels.to(device)
+                ingredients, labels = ingredients.to(training_device), labels.to(training_device)
                 outputs = model(ingredients)
                 labels = labels.float()
                 loss = criterion(outputs, labels)
@@ -122,7 +122,7 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
             with torch.no_grad():  # Disable gradient calculation for efficiency
                 for batch in val_loader:
                     ingredients, labels = batch
-                    ingredients, labels = ingredients.to(device), labels.to(device)
+                    ingredients, labels = ingredients.to(training_device), labels.to(training_device)
                     outputs = model(ingredients)
                     loss = criterion(outputs, labels)
                     val_loss += loss.item() * ingredients.size(0)
