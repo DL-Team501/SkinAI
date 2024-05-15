@@ -117,19 +117,30 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
                 train_loss += loss.item() * ingredients.size(0)
 
             model.eval()  # Set model to evaluation mode
+            val_correct = 0
+            val_total = 0
             val_loss = 0.0
             with torch.no_grad():  # Disable gradient calculation for efficiency
                 for batch in val_loader:
                     ingredients, labels = batch
                     ingredients, labels = ingredients.to(training_device), labels.to(training_device)
                     outputs = model(ingredients)
+
+                    predicted = (outputs >= 0.5).float()  # Apply a threshold for multi-label
+
+                    val_total += labels.numel()  # Total number of labels (elements)
+                    val_correct += (predicted == labels).sum().item()
+
                     labels = labels.float()
                     loss = criterion(outputs, labels)
                     val_loss += loss.item() * ingredients.size(0)
 
+            accuracy = val_correct / val_total
+
             # Log metrics to MLflow
             print("train_loss", train_loss / len(train_loader.dataset), epoch)
             print("val_loss", val_loss / len(val_loader.dataset), epoch)
+            print(f'val_accuracy = {accuracy:.4f}')
             mlflow.log_metric("train_loss", train_loss / len(train_loader.dataset), epoch)
             mlflow.log_metric("val_loss", val_loss / len(val_loader.dataset), epoch)
             # ... log other relevant metrics
