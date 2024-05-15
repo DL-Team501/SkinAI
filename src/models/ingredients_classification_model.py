@@ -27,7 +27,7 @@ class CosmeticEfficacyModel(nn.Module):
     def forward(self, ingredient_lists):
         token_ids_list = [preprocess_ingredients(ingredient_list, self.tokenizer, self.max_length)
                           for ingredient_list in ingredient_lists]
-        batch_input_ids = torch.stack(token_ids_list, dim=0)  # Stack the token IDs along batch dimension
+        batch_input_ids = torch.stack(token_ids_list, dim=0).to(training_device)  # Stack the token IDs along batch dimension
 
         encoded_ingredients = self.transformer_encoder(batch_input_ids)
         # Use encoded_ingredients for classification (e.g., take mean or max-pool)
