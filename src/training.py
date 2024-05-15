@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import re
 import torch
@@ -5,9 +7,9 @@ import torch.nn as nn
 import mlflow
 from mlflow.tracking import MlflowClient
 from torch.optim import Adam
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, random_split
 
-from src.models.ingredients_classification_model import CosmeticEfficacyModel
+from src.models.ingredients_classification_model import CosmeticEfficacyModel, preprocess_ingredients
 from src.models.ingredients_tokenizer import CosmeticIngredientTokenizer
 
 
@@ -29,26 +31,15 @@ class CosmeticIngredientsDataset(Dataset):
 
 
 # *2. Data Loading Functions*
-def get_train_dataloader(dataset, batch_size=32, train_split=0.8):
+def get_dataloaders(dataset, batch_size=32, train_split=0.8):
     train_size = int(train_split * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    return train_dataloader
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 
-
-def get_val_dataloader(dataset, batch_size=32):
-    val_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-    return val_dataloader
-
-
-# *Example Usage (Assuming you've loaded your data)*
-all_ingredient_lists = ...  # Load your list of ingredient lists
-all_labels = ...  # Load corresponding labels
-dataset = CosmeticIngredientsDataset(all_ingredient_lists, all_labels)
-train_dataloader = get_train_dataloader(dataset)
-val_dataloader = get_val_dataloader(dataset)
+    return train_dataloader, val_dataloader
 
 
 def clean_ingredients(text):
@@ -71,13 +62,15 @@ def clean_ingredients(text):
 
 
 def load_data():
-    df = pd.read_csv('../data/cosmetic.csv')
+    data_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'cosmetic.csv')
+    df = pd.read_csv(data_dir)
     skin_type_cols = ['Combination', 'Dry', 'Normal', 'Oily', 'Sensitive']
     df_skin_types = df[skin_type_cols]
     all_zero_skin_types = (df_skin_types == 0).all(axis=1).sum()
     df.loc[(df_skin_types == 0).all(axis=1), 'Normal'] = 1
     # Apply the cleaning function to the 'ingredients list' column
     df['clean_ingredients'] = df['ingredients'].apply(clean_ingredients)
+    df['clean_ingredients_lists'] = df['clean_ingredients'].str.split(',')
     unique_ingredients = set()
 
     for ingredient_list in df['clean_ingredients']:
@@ -118,7 +111,15 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
 
                 train_loss += loss.item() * ingredients.size(0)
 
-            # ... (Add validation loop similar to the above)
+            model.eval()  # Set model to evaluation mode
+            val_loss = 0.0
+            with torch.no_grad():  # Disable gradient calculation for efficiency
+                for batch in val_loader:
+                    ingredients, labels = batch
+                    ingredients, labels = ingredients.to(device), labels.to(device)
+                    outputs = model(ingredients)
+                    loss = criterion(outputs, labels)
+                    val_loss += loss.item() * ingredients.size(0)
 
             # Log metrics to MLflow
             mlflow.log_metric("train_loss", train_loss / len(train_loader.dataset), epoch)
@@ -140,15 +141,15 @@ if __name__ == "__main__":
         'num_classes': 5  # Number of output classes (for your efficacy labels)
     }
     experiment_name = "cosmetic_efficacy_experiment"
-    ingredients_dict, df = load_data()
-    max_length = max([len(ingredient_list.split(",")) for ingredient_list in list(df['clean_ingredients'])])
+    ingredients_dict, dataset_df = load_data()
+    max_length = max([len(ingredient_list.split(",")) for ingredient_list in list(dataset_df['clean_ingredients'])])
 
     # Initialize your tokenizer using your ingredient dictionary
     tokenizer = CosmeticIngredientTokenizer(ingredients_dict)
 
     model = CosmeticEfficacyModel(**model_args)
-    train_dataloader = get_train_dataloader()
-    val_dataloader = get_val_dataloader()
+    dataset = CosmeticIngredientsDataset(dataset_df['clean_ingredients_lists'], dataset_df['skiny_type_label'])
+    train_dataloader, val_dataloader = get_dataloaders(dataset, train_split=0.8)
 
     train_model(model, train_dataloader, val_dataloader, epochs=10, learning_rate=0.001,
                 experiment_name=experiment_name)
