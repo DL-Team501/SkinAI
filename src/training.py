@@ -105,7 +105,6 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
             model.train()
             train_loss = 0.0
             for batch in train_loader:
-                print("here")
                 ingredients, labels = batch
                 ingredients, labels = ingredients.to(training_device), labels.to(training_device)
                 outputs = model(ingredients)
