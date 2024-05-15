@@ -16,14 +16,15 @@ def preprocess_ingredients(ingredient_list, tokenizer, max_length):
 
 
 class CosmeticEfficacyModel(nn.Module):
-    def __init__(self, **kwargs):
+    def __init__(self, ingredient_dict, num_classes, max_length, **kwargs):
         super().__init__()
+        self.max_length = max_length
         self.tokenizer = CosmeticIngredientTokenizer(ingredient_dict)  # Load your ingredient dictionary
-        self.transformer_encoder = TransformerEncoderModel(**kwargs)
+        self.transformer_encoder = TransformerEncoderModel(max_length, **kwargs)
         self.classification_head = ClassificationHead(kwargs['d_model'], num_classes)
 
     def forward(self, ingredient_list):
-        ingredient_tokens = preprocess_ingredients(ingredient_list, self.tokenizer, max_length)
+        ingredient_tokens = preprocess_ingredients(ingredient_list, self.tokenizer, self.max_length)
         encoded_ingredients = self.transformer_encoder(ingredient_tokens)
         # Use encoded_ingredients for classification (e.g., take mean or max-pool)
         output = self.classification_head(encoded_ingredients[:, 0, :])  # Example: using the first token

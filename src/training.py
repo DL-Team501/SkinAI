@@ -5,7 +5,7 @@ import re
 import torch
 import torch.nn as nn
 import mlflow
-from mlflow.tracking import MlflowClient
+
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset, random_split
 
@@ -14,15 +14,15 @@ from src.models.ingredients_tokenizer import CosmeticIngredientTokenizer
 
 
 class CosmeticIngredientsDataset(Dataset):
-    def _init_(self, ingredient_lists, labels, ingredient_dict):
+    def __init__(self, ingredient_lists, labels, ingredient_dict):
         self.ingredient_lists = ingredient_lists
         self.labels = labels
         self.tokenizer = CosmeticIngredientTokenizer(ingredient_dict)  # Assuming you have this
 
-    def _len_(self):
+    def __len__(self):
         return len(self.ingredient_lists)
 
-    def _getitem_(self, index):
+    def __getitem__(self, index):
         ingredients = self.ingredient_lists[index]
         label = self.labels[index]
 
@@ -136,9 +136,6 @@ if __name__ == "__main__":
         'num_transformer_layers': 6,  # Number of transformer encoder layers
         'dim_feedforward': 1024,  # Dimension of feedforward network in the transformer
         'dropout': 0.1,  # Dropout probability
-
-        # Other parameters
-        'num_classes': 5  # Number of output classes (for your efficacy labels)
     }
     experiment_name = "cosmetic_efficacy_experiment"
     ingredients_dict, dataset_df = load_data()
@@ -147,8 +144,9 @@ if __name__ == "__main__":
     # Initialize your tokenizer using your ingredient dictionary
     tokenizer = CosmeticIngredientTokenizer(ingredients_dict)
 
-    model = CosmeticEfficacyModel(**model_args)
-    dataset = CosmeticIngredientsDataset(dataset_df['clean_ingredients_lists'], dataset_df['skiny_type_label'])
+    model = CosmeticEfficacyModel(ingredients_dict, 5, max_length, **model_args)
+    dataset = CosmeticIngredientsDataset(dataset_df['clean_ingredients_lists'], dataset_df['skiny_type_label'],
+                                         ingredients_dict)
     train_dataloader, val_dataloader = get_dataloaders(dataset, train_split=0.8)
 
     train_model(model, train_dataloader, val_dataloader, epochs=10, learning_rate=0.001,
