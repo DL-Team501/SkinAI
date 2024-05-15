@@ -33,7 +33,7 @@ class CosmeticIngredientsDataset(Dataset):
 
 
 # *2. Data Loading Functions*
-def get_dataloaders(dataset, batch_size=256, train_split=0.8):
+def get_dataloaders(dataset, batch_size=128, train_split=0.8):
     train_size = int(train_split * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
