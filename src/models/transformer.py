@@ -2,15 +2,17 @@ import torch
 import torch.nn as nn
 from transformers import BertModel
 
+from src.training_config import training_device
+
 
 class TransformerEncoderModel(nn.Module):
     def __init__(self, max_length, num_transformer_layers, d_model, nhead, dim_feedforward, dropout):
         super().__init__()
-        self.bert = BertModel.from_pretrained('bert-base-uncased')  # Or another suitable BERT model
-        self.positional_embedding = nn.Embedding(max_length, d_model)  # For positional information
+        self.bert = BertModel.from_pretrained('bert-base-uncased').to(training_device)  # Or another suitable BERT model
+        self.positional_embedding = nn.Embedding(max_length, d_model).to(training_device)  # For positional information
 
-        encoder_layer = nn.TransformerEncoderLayer(d_model, nhead, dim_feedforward, dropout)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_transformer_layers)
+        encoder_layer = nn.TransformerEncoderLayer(d_model, nhead, dim_feedforward, dropout).to(training_device)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_transformer_layers).to(training_device)
 
     def forward(self, ingredient_tokens):
         # Obtain the output of the BERT model
