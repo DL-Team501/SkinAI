@@ -124,6 +124,7 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
                     ingredients, labels = batch
                     ingredients, labels = ingredients.to(training_device), labels.to(training_device)
                     outputs = model(ingredients)
+                    labels = labels.float()
                     loss = criterion(outputs, labels)
                     val_loss += loss.item() * ingredients.size(0)
 
