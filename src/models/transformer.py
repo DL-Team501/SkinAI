@@ -13,8 +13,18 @@ class TransformerEncoderModel(nn.Module):
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_transformer_layers)
 
     def forward(self, ingredient_tokens):
-        pos_embeddings = self.positional_embedding(torch.arange(ingredient_tokens.size(1)))
-        embedded_ingredients = self.bert(ingredient_tokens)[0] + pos_embeddings
+        # Obtain the output of the BERT model
+        bert_output = self.bert(ingredient_tokens)[0]  # [batch_size, sequence_length, hidden_size]
+
+        # Obtain positional embeddings
+        batch_size, sequence_length, hidden_size = bert_output.size()
+        pos_embeddings = self.positional_embedding(torch.arange(sequence_length).to(ingredient_tokens.device))
+        pos_embeddings = pos_embeddings.unsqueeze(0).expand(batch_size, -1, -1)  # Expand to match batch size
+
+        # Add positional embeddings to BERT output
+        embedded_ingredients = bert_output + pos_embeddings
+
+        # Apply transformer encoder
         output = self.transformer_encoder(embedded_ingredients)
 
         return output

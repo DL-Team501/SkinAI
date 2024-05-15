@@ -1,6 +1,7 @@
 import os
 
 import pandas as pd
+import numpy as np
 import re
 import torch
 import torch.nn as nn
@@ -77,6 +78,8 @@ def load_data():
         ingredients = ingredient_list.split(",")
         unique_ingredients.update(ingredient.strip() for ingredient in ingredients)
 
+    unique_ingredients = list(unique_ingredients)
+    unique_ingredients.append('<UNK>')
     ingredients_dict = {ingredient: idx for idx, ingredient in enumerate(unique_ingredients)}
 
     return ingredients_dict, df
@@ -95,15 +98,18 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
     mlflow.set_experiment(experiment_name)  # Create or use existing experiment
 
     with mlflow.start_run() as run:
-        mlflow.log_params(model.transformer_encoder.get_config())  # Log model hyperparameters
+        # mlflow.log_params(model.transformer_encoder.get_config())  # Log model hyperparameters
 
         for epoch in range(epochs):
+            print(f"Epoch number : {epoch}")
             model.train()
             train_loss = 0.0
             for batch in train_loader:
+                print("here")
                 ingredients, labels = batch
                 ingredients, labels = ingredients.to(device), labels.to(device)
                 outputs = model(ingredients)
+                labels = labels.float()
                 loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
@@ -122,6 +128,8 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
                     val_loss += loss.item() * ingredients.size(0)
 
             # Log metrics to MLflow
+            print("train_loss", train_loss / len(train_loader.dataset), epoch)
+            print("val_loss", val_loss / len(val_loader.dataset), epoch)
             mlflow.log_metric("train_loss", train_loss / len(train_loader.dataset), epoch)
             mlflow.log_metric("val_loss", val_loss / len(val_loader.dataset), epoch)
             # ... log other relevant metrics
@@ -131,7 +139,7 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
 if __name__ == "__main__":
     # Transformer encoder parameters
     model_args = {
-        'd_model': 256,  # Embedding dimension
+        'd_model': 768,  # Embedding dimension
         'nhead': 8,  # Number of heads in multi-head attention
         'num_transformer_layers': 6,  # Number of transformer encoder layers
         'dim_feedforward': 1024,  # Dimension of feedforward network in the transformer
@@ -141,12 +149,18 @@ if __name__ == "__main__":
     ingredients_dict, dataset_df = load_data()
     max_length = max([len(ingredient_list.split(",")) for ingredient_list in list(dataset_df['clean_ingredients'])])
 
+    skin_type_cols = ['Combination', 'Dry', 'Normal', 'Oily', 'Sensitive']
+
+    # Convert each selected column into a NumPy array
+    arrays_list = [np.array(dataset_df[col]) for col in skin_type_cols]
+
+    # Vertically stack the arrays
+    labels = np.vstack(arrays_list).T
+
     # Initialize your tokenizer using your ingredient dictionary
     tokenizer = CosmeticIngredientTokenizer(ingredients_dict)
-
     model = CosmeticEfficacyModel(ingredients_dict, 5, max_length, **model_args)
-    dataset = CosmeticIngredientsDataset(dataset_df['clean_ingredients_lists'], dataset_df['skiny_type_label'],
-                                         ingredients_dict)
+    dataset = CosmeticIngredientsDataset(list(dataset_df['clean_ingredients_lists']), labels, ingredients_dict)
     train_dataloader, val_dataloader = get_dataloaders(dataset, train_split=0.8)
 
     train_model(model, train_dataloader, val_dataloader, epochs=10, learning_rate=0.001,
