@@ -110,7 +110,6 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
             train_correct = 0
 
             for batch in train_loader:
-                print('1')
                 ingredients, labels = batch
                 ingredients, labels = ingredients.to(training_device), labels.to(training_device)
                 outputs = model(ingredients)
@@ -127,7 +126,6 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
                 optimizer.zero_grad()  # Reset gradients
 
                 train_loss += loss.item() * ingredients.size(0)
-                print('2')
 
             model.eval()  # Set model to evaluation mode
             val_correct = 0
