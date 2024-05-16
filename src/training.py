@@ -54,6 +54,8 @@ def clean_ingredients(text):
   Returns:
       A string with cleaned ingredients in lowercase, with extra spaces removed.
   """
+    text = text.rstrip('.')
+
     # Lowercase
     text = text.lower()
 
@@ -72,7 +74,7 @@ def load_data():
     df.loc[(df_skin_types == 0).all(axis=1), 'Normal'] = 1
     # Apply the cleaning function to the 'ingredients list' column
     df['clean_ingredients'] = df['ingredients'].apply(clean_ingredients)
-    df['clean_ingredients_lists'] = df['clean_ingredients'].str.split(',')
+    df['clean_ingredients_lists'] = df['clean_ingredients'].str.split(',').map(lambda x: [item.strip() for item in x])
     unique_ingredients = set()
 
     for ingredient_list in df['clean_ingredients']:
@@ -108,6 +110,7 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
             train_correct = 0
 
             for batch in train_loader:
+                print('1')
                 ingredients, labels = batch
                 ingredients, labels = ingredients.to(training_device), labels.to(training_device)
                 outputs = model(ingredients)
@@ -124,6 +127,7 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
                 optimizer.zero_grad()  # Reset gradients
 
                 train_loss += loss.item() * ingredients.size(0)
+                print('2')
 
             model.eval()  # Set model to evaluation mode
             val_correct = 0
