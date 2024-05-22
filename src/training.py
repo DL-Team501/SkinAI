@@ -20,6 +20,8 @@ class CosmeticIngredientsDataset(Dataset):
         self.ingredient_lists = ingredient_lists
         self.labels = labels
         self.tokenizer = CosmeticIngredientTokenizer(ingredient_dict)  # Assuming you have this
+        self.min_value = min(list(ingredient_dict.values()))
+        self.max_value = max(list(ingredient_dict.values()))
 
     def __len__(self):
         return len(self.ingredient_lists)
@@ -29,6 +31,7 @@ class CosmeticIngredientsDataset(Dataset):
         label = self.labels[index]
 
         token_ids = preprocess_ingredients(ingredients, self.tokenizer, max_length)
+        token_ids = (token_ids - self.min_value) / (self.max_value - self.min_value)
         return token_ids, label
 
 
@@ -65,6 +68,14 @@ def clean_ingredients(text):
     return text
 
 
+def remove_after_newline(text):
+    last_newline_index = text.rfind('\n')
+    if last_newline_index != -1:
+        return text[:last_newline_index].rstrip('\n')
+    else:
+        return text
+
+
 def load_data():
     data_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'cosmetic.csv')
     df = pd.read_csv(data_dir)
@@ -73,6 +84,11 @@ def load_data():
     all_zero_skin_types = (df_skin_types == 0).all(axis=1).sum()
     df.loc[(df_skin_types == 0).all(axis=1), 'Normal'] = 1
     # Apply the cleaning function to the 'ingredients list' column
+    df = df[~df['ingredients'].astype(str).str.startswith("Visit")]
+    df = df[~df['ingredients'].astype(str).str.startswith("No Info")]
+    mask = df['ingredients'].astype(str).str.endswith("for the most up to date list of ingredients.")
+    df.loc[mask, 'ingredients'] = df.loc[mask, 'ingredients'].astype(str).apply(remove_after_newline)
+    df = df[df['ingredients'].astype(str).str.contains(',')]
     df['clean_ingredients'] = df['ingredients'].apply(clean_ingredients)
     df['clean_ingredients_lists'] = df['clean_ingredients'].str.split(',').map(lambda x: [item.strip() for item in x])
     unique_ingredients = set()
@@ -188,5 +204,5 @@ if __name__ == "__main__":
     dataset = CosmeticIngredientsDataset(list(dataset_df['clean_ingredients_lists']), labels, ingredients_dict)
     train_dataloader, val_dataloader = get_dataloaders(dataset, train_split=0.8)
 
-    train_model(model, train_dataloader, val_dataloader, epochs=50, learning_rate=0.00001,
+    train_model(model, train_dataloader, val_dataloader, epochs=50, learning_rate=0.001,
                 experiment_name=experiment_name)
