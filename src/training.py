@@ -116,7 +116,7 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
     mlflow.set_experiment(experiment_name)  # Create or use existing experiment
 
     with mlflow.start_run() as run:
-        # mlflow.log_params(model.transformer_encoder.get_config())  # Log model hyperparameters
+        mlflow.log_params(model_args)
 
         for epoch in range(epochs):
             print(f"Epoch number : {epoch}")
@@ -173,7 +173,8 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
             print(f'train_accuracy = {train_accuracy:.4f}')
             mlflow.log_metric("train_loss", train_loss / len(train_loader.dataset), epoch)
             mlflow.log_metric("val_loss", val_loss / len(val_loader.dataset), epoch)
-            # ... log other relevant metrics
+            mlflow.log_metric("val_accuracy", val_accuracy, epoch)
+            mlflow.log_metric("train_accuracy", train_accuracy, epoch)
 
 
 # **Main Execution**
@@ -186,7 +187,7 @@ if __name__ == "__main__":
         'dim_feedforward': 1024,  # Dimension of feedforward network in the transformer
         'dropout': 0.1,  # Dropout probability
     }
-    experiment_name = "cosmetic_efficacy_experiment"
+    experiment_name = "ori_first_experiment"
     ingredients_dict, dataset_df = load_data()
     max_length = max([len(ingredient_list.split(",")) for ingredient_list in list(dataset_df['clean_ingredients'])])
 
