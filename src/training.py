@@ -188,5 +188,5 @@ if __name__ == "__main__":
     dataset = CosmeticIngredientsDataset(list(dataset_df['clean_ingredients_lists']), labels, ingredients_dict)
     train_dataloader, val_dataloader = get_dataloaders(dataset, train_split=0.8)
 
-    train_model(model, train_dataloader, val_dataloader, epochs=50, learning_rate=0.0001,
+    train_model(model, train_dataloader, val_dataloader, epochs=50, learning_rate=0.00001,
                 experiment_name=experiment_name)
