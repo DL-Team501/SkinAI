@@ -1,16 +1,31 @@
 import torch.nn as nn
 
-
 class ClassificationHead(nn.Module):
-    def __init__(self, hidden_size, num_classes):
+    def __init__(self, input_size, num_classes, hidden_sizes=None, dropout=0.0):
         super().__init__()
-        self.fc1 = nn.Linear(hidden_size, hidden_size // 2)
-        self.relu = nn.ReLU()  # Add ReLU activation
-        self.fc2 = nn.Linear(hidden_size // 2, num_classes)
+        if hidden_sizes is None:
+            hidden_sizes = [input_size // 2]  # Default to one hidden layer
+
+        self.layers = nn.ModuleList()
+
+        # Input layer
+        self.layers.append(nn.Linear(input_size, hidden_sizes[0]))
+        self.layers.append(nn.ReLU())
+        if dropout > 0.0:
+            self.layers.append(nn.Dropout(dropout))
+
+        # Hidden layers
+        for i in range(len(hidden_sizes) - 1):
+            self.layers.append(nn.Linear(hidden_sizes[i], hidden_sizes[i + 1]))
+            self.layers.append(nn.ReLU())
+            if dropout > 0.0:
+                self.layers.append(nn.Dropout(dropout))
+
+        # Output layer
+        self.layers.append(nn.Linear(hidden_sizes[-1], num_classes))
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        x = self.fc1(x)
-        x = self.relu(x)  # Apply ReLU
-        x = self.fc2(x)
+        for layer in self.layers:
+            x = layer(x)
         return self.sigmoid(x)

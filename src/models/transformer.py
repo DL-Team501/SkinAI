@@ -1,5 +1,4 @@
 import torch.nn as nn
-
 from src.training_config import training_device
 
 
@@ -27,7 +26,7 @@ class TransformerEncoderModel(nn.Module):
 
         # Add positional embeddings directly to integer-encoded ingredient tokens
         embedded_ingredients = ingredient_tokens + pos_embeddings
-
         # Apply transformer encoder layer
         output = self.transformer_encoder(embedded_ingredients)
+
         return output

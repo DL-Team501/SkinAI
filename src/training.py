@@ -20,7 +20,7 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
     mlflow.set_experiment(experiment_name)  # Create or use existing experiment
 
     with mlflow.start_run() as run:
-        # mlflow.log_params(model.transformer_encoder.get_config())  # Log model hyperparameters
+        mlflow.log_params(model_args)
 
         for epoch in range(epochs):
             print(f"Epoch number : {epoch}")
@@ -77,7 +77,8 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
             print(f'train_accuracy = {train_accuracy:.4f}')
             mlflow.log_metric("train_loss", train_loss / len(train_loader.dataset), epoch)
             mlflow.log_metric("val_loss", val_loss / len(val_loader.dataset), epoch)
-            # ... log other relevant metrics
+            mlflow.log_metric("val_accuracy", val_accuracy, epoch)
+            mlflow.log_metric("train_accuracy", train_accuracy, epoch)
 
 
 # **Main Execution**
@@ -85,15 +86,16 @@ if __name__ == "__main__":
     # Transformer encoder parameters
     model_args = {
         'd_model': 768,  # Embedding dimension
-        'nhead': 8,  # Number of heads in multi-head attention
+        'nhead': 2,  # Number of heads in multi-head attention
         'num_transformer_layers': 6,  # Number of transformer encoder layers
         'dim_feedforward': 1024,  # Dimension of feedforward network in the transformer
         'dropout': 0.1,  # Dropout probability
     }
-    experiment_name = "cosmetic_efficacy_experiment"
-    ingredients_vector_len = 216
-    train_dataloader, val_dataloader = create_dataloaders()
-    model = CosmeticEfficacyModel(ingredients_vector_len, 5, **model_args)
 
-    train_model(model, train_dataloader, val_dataloader, epochs=50, learning_rate=0.001,
-                experiment_name=experiment_name)
+experiment_name = "cosmetic_efficacy_experiment"
+ingredients_vector_len = 216
+train_dataloader, val_dataloader = create_dataloaders()
+model = CosmeticEfficacyModel(ingredients_vector_len, 5, [768 // 2, (768 // 2) // 2], **model_args)
+
+train_model(model, train_dataloader, val_dataloader, epochs=50, learning_rate=0.001,
+            experiment_name=experiment_name)
