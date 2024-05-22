@@ -17,12 +17,13 @@ def preprocess_ingredients(ingredient_list, tokenizer, max_length):
 
 
 class CosmeticEfficacyModel(nn.Module):
-    def __init__(self, ingredient_dict, num_classes, max_length, **kwargs):
+    def __init__(self, ingredient_dict, num_classes, max_length, classification_hidden_layers_sizes, **kwargs):
         super().__init__()
         self.max_length = max_length
         self.tokenizer = CosmeticIngredientTokenizer(ingredient_dict)  # Load your ingredient dictionary
         self.transformer_encoder = TransformerEncoderModel(max_length, **kwargs).to(training_device)
-        self.classification_head = ClassificationHead(kwargs['d_model'], num_classes).to(training_device)
+        self.classification_head = ClassificationHead(kwargs['d_model'], num_classes,
+                                                      classification_hidden_layers_sizes).to(training_device)
 
     def forward(self, ingredient_lists):
         # token_ids_list = [preprocess_ingredients(ingredient_list, self.tokenizer, self.max_length)

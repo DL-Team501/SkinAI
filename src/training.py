@@ -181,7 +181,7 @@ if __name__ == "__main__":
     # Transformer encoder parameters
     model_args = {
         'd_model': 768,  # Embedding dimension
-        'nhead': 8,  # Number of heads in multi-head attention
+        'nhead': 2,  # Number of heads in multi-head attention
         'num_transformer_layers': 6,  # Number of transformer encoder layers
         'dim_feedforward': 1024,  # Dimension of feedforward network in the transformer
         'dropout': 0.1,  # Dropout probability
@@ -200,7 +200,7 @@ if __name__ == "__main__":
 
     # Initialize your tokenizer using your ingredient dictionary
     tokenizer = CosmeticIngredientTokenizer(ingredients_dict)
-    model = CosmeticEfficacyModel(ingredients_dict, 5, max_length, **model_args)
+    model = CosmeticEfficacyModel(ingredients_dict, 5, max_length, [768 // 2, (768 // 2) // 2], **model_args)
     dataset = CosmeticIngredientsDataset(list(dataset_df['clean_ingredients_lists']), labels, ingredients_dict)
     train_dataloader, val_dataloader = get_dataloaders(dataset, train_split=0.8)
 
