@@ -11,12 +11,18 @@ def get_formatted_data():
     data_file = os.path.join(ROOT_PATH, 'data', 'raw', 'cosmetic.csv')
     df = pd.read_csv(data_file)
 
+    df = filter_bad_rows(df)
+
     # Apply the cleaning function to the 'ingredients list' column
     df['clean_ingredients'] = df['ingredients'].apply(clean_ingredients)
 
     # Transform the ingredients list to indexes list
     unique_ingredients = get_unique_ingredients(df['clean_ingredients'])
     ingredient_index_dict = {ingredient: index + 1 for index, ingredient in enumerate(unique_ingredients)}
+    min_val, max_val = list(ingredient_index_dict.values())[0], list(ingredient_index_dict.values())[-1]
+    ingredient_index_dict = {key: (value - min_val) / (max_val - min_val) for key, value
+                             in ingredient_index_dict.items()}
+
     df['ingredients_indexed'] = df['clean_ingredients'].apply(
         lambda row: map_ingredient_to_index(row, ingredient_index_dict))
     max_ingredients_list_length = max(map(len, df['ingredients_indexed']))
@@ -37,6 +43,24 @@ def get_formatted_data():
     df = df.drop(columns=['rank', 'ingredients_indexed', 'price', 'ingredients'] + skin_type_cols)
 
     return df
+
+
+def filter_bad_rows(df):
+    df = df[~df['ingredients'].astype(str).str.startswith("Visit")]
+    df = df[~df['ingredients'].astype(str).str.startswith("No Info")]
+    mask = df['ingredients'].astype(str).str.endswith("for the most up to date list of ingredients.")
+    df.loc[mask, 'ingredients'] = df.loc[mask, 'ingredients'].astype(str).apply(remove_after_newline)
+    df = df[df['ingredients'].astype(str).str.contains(',')]
+
+    return df
+
+
+def remove_after_newline(text):
+    last_newline_index = text.rfind('\n')
+    if last_newline_index != -1:
+        return text[:last_newline_index].rstrip('\n')
+    else:
+        return text
 
 
 def clean_ingredients(text):
@@ -73,7 +97,6 @@ def get_unique_ingredients(clean_ingredients_lists):
 
     unique_ingredients = list(unique_ingredients)
     unique_ingredients.append('<UNK>')
-    # unique_ingredients = [a for a in unique_ingredients if a]
 
     return unique_ingredients
 

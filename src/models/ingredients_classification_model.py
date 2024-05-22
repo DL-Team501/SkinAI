@@ -1,33 +1,19 @@
-import torch
 import torch.nn as nn
 
-from src.models.ingredients_tokenizer import CosmeticIngredientTokenizer
 from src.models.transformer import TransformerEncoderModel
 from src.models.classification_head import ClassificationHead
-
-
-def preprocess_ingredients(ingredient_list, tokenizer, max_length):
-    token_ids = tokenizer.tokenize(ingredient_list)
-    token_ids = token_ids[:max_length]  # Truncate if necessary
-    padding_length = max_length - len(token_ids)
-    token_ids += [0] * padding_length  # Padding with zeros
-
-    return torch.tensor(token_ids)
+from src.training_config import training_device
 
 
 class CosmeticEfficacyModel(nn.Module):
-    def __init__(self, ingredient_dict, num_classes, max_length, **kwargs):
+    def __init__(self, ingredients_vector_size, num_classes, **kwargs):
         super().__init__()
-        self.max_length = max_length
-        self.tokenizer = CosmeticIngredientTokenizer(ingredient_dict)  # Load your ingredient dictionary
-        self.transformer_encoder = TransformerEncoderModel(max_length, **kwargs)
-        self.classification_head = ClassificationHead(kwargs['d_model'], num_classes)
+        self.ingredients_vector_size = ingredients_vector_size
+        self.transformer_encoder = TransformerEncoderModel(ingredients_vector_size, **kwargs).to(training_device)
+        self.classification_head = ClassificationHead(kwargs['d_model'], num_classes).to(training_device)
 
     def forward(self, ingredient_lists):
-        token_ids_list = [preprocess_ingredients(ingredient_list, self.tokenizer, self.max_length)
-                          for ingredient_list in ingredient_lists]
-        batch_input_ids = torch.stack(token_ids_list, dim=0)  # Stack the token IDs along batch dimension
-
+        batch_input_ids = ingredient_lists
         encoded_ingredients = self.transformer_encoder(batch_input_ids)
         # Use encoded_ingredients for classification (e.g., take mean or max-pool)
         output = self.classification_head(encoded_ingredients[:, 0, :])  # Example: using the first token
