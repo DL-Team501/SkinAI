@@ -15,18 +15,13 @@ class TransformerEncoderModel(nn.Module):
 
         # Get positional embeddings using sin/cos encoding
         batch_size, sequence_length = ingredient_tokens.size()
-        pos_embeddings = self.get_positional_encoding(sequence_length, self.d_model).to(ingredient_tokens.device)
-        pos_embeddings = pos_embeddings.unsqueeze(0).expand(batch_size, -1, -1)
 
         # Type cast ingredient_tokens to float for compatibility with positional embeddings
         ingredient_tokens = ingredient_tokens.float()
 
         # Expand ingredient_tokens to have d_model dimensions
         ingredient_tokens = ingredient_tokens.unsqueeze(-1).expand(-1, -1, self.d_model)
-
-        # Add positional embeddings directly to integer-encoded ingredient tokens
-        embedded_ingredients = ingredient_tokens + pos_embeddings
         # Apply transformer encoder layer
-        output = self.transformer_encoder(embedded_ingredients)
+        output = self.transformer_encoder(ingredient_tokens)
 
         return output

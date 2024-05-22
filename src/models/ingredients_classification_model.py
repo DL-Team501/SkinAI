@@ -9,7 +9,7 @@ class CosmeticEfficacyModel(nn.Module):
     def __init__(self, ingredients_vector_size, num_classes, classification_hidden_layers_sizes, **kwargs):
         super().__init__()
         self.ingredients_vector_size = ingredients_vector_size
-        self.transformer_encoder = TransformerEncoderModel(ingredients_vector_size, **kwargs).to(training_device)
+        self.transformer_encoder = TransformerEncoderModel(**kwargs).to(training_device)
         self.classification_head = ClassificationHead(kwargs['d_model'], num_classes,
                                                       classification_hidden_layers_sizes).to(training_device)
 
