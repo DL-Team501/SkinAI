@@ -1,10 +1,12 @@
 import os
 import re
 import math
+
 import torch
 import pandas as pd
 
 from src.consts import ROOT_PATH
+from src.utils.mlflow import log_dict_as_mlflow_artifact
 
 
 def get_formatted_data():
@@ -18,10 +20,10 @@ def get_formatted_data():
 
     # Transform the ingredients list to indexes list
     unique_ingredients = get_unique_ingredients(df['clean_ingredients'])
-    ingredient_index_dict = {ingredient: index + 1 for index, ingredient in enumerate(unique_ingredients)}
-    min_val, max_val = list(ingredient_index_dict.values())[0], list(ingredient_index_dict.values())[-1]
-    ingredient_index_dict = {key: (value - min_val) / (max_val - min_val) for key, value
-                             in ingredient_index_dict.items()}
+    ingredient_index_dict = get_ingredients_index_dict(unique_ingredients)
+
+    ingredient_index_dict_path = 'ingredient_index_dict.json'
+    log_dict_as_mlflow_artifact(ingredient_index_dict, ingredient_index_dict_path)
 
     df['ingredients_indexed'] = df['clean_ingredients'].apply(
         lambda row: map_ingredient_to_index(row, ingredient_index_dict))
@@ -43,6 +45,13 @@ def get_formatted_data():
     df = df.drop(columns=['rank', 'ingredients_indexed', 'price', 'ingredients'] + skin_type_cols)
 
     return df
+
+
+def get_ingredients_index_dict(unique_ingredients):
+    ingredient_index_dict = {ingredient: index + 1 for index, ingredient in enumerate(unique_ingredients)}
+    min_val, max_val = list(ingredient_index_dict.values())[0], list(ingredient_index_dict.values())[-1]
+    return {key: (value - min_val) / (max_val - min_val) for key, value
+            in ingredient_index_dict.items()}
 
 
 def filter_bad_rows(df):
