@@ -1,5 +1,6 @@
 import json
 
+import selenium
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -31,8 +32,8 @@ driver.get(url)
 # Function to close modals
 def close_modals():
     modal_close_selectors = [
-        (By.CSS_SELECTOR, "button.css-1kna575[data-at='modal_close']"),
-        (By.CSS_SELECTOR, "button.css-1kna575[data-at='close_button']")
+        (By.XPATH, '/html/body/div[5]/div[2]/div/div[2]/div/div/button'),
+        (By.XPATH, '/html/body/div[5]/div/div/div[2]/div/div/button')
     ]
 
     for selector in modal_close_selectors:
@@ -79,14 +80,33 @@ def load_all_products():
 
             # Wait for new products to load
             time.sleep(1)
+        except selenium.common.exceptions.ElementClickInterceptedException:
+            close_button = wait.until(
+                EC.element_to_be_clickable((By.XPATH, '/html/body/div[5]/div/div/div[2]/div/div/button')))
+            close_button.click()
+            time.sleep(0.5)
         except TimeoutException:
-            # No more "Show More Products" button to click
-            print('No more "Show More Products" button to click')
-            break
+            if not element_exists('/html/body/div[5]/div/div/div[2]/div/div/button'):
+                # No more "Show More Products" button to click
+                print('No more "Show More Products" button to click')
+                break
 
-    # Perform a final gradual scroll to the bottom to ensure all products are loaded
-    gradual_scroll()
+            close_button = wait.until(
+                EC.element_to_be_clickable((By.XPATH, '/html/body/div[5]/div/div/div[2]/div/div/button')))
+            close_button.click()
+            time.sleep(0.5)
 
+
+def element_exists(xpath):
+    try:
+        driver.find_element(By.XPATH, xpath)
+        return True
+    except selenium.common.exceptions.NoSuchElementException:
+        return False
+
+
+# Perform a final gradual scroll to the bottom to ensure all products are loaded
+gradual_scroll()
 
 # Load all products
 load_all_products()
