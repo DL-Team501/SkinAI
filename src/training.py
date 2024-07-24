@@ -4,14 +4,14 @@ import mlflow
 
 from torch.optim import Adam
 
-from src.models.ingredients_classification_model import CosmeticEfficacyModel
+from src.models.ingredients_classification_model import SkincareClassifier
 from src.training_config import training_device
 from src.data.dataset import create_dataloaders
 
 
 def train_model(model, train_loader, val_loader, epochs, learning_rate, experiment_name):
     """Trains the model and logs metrics to MLflow."""
-    print(training_device)
+    print(f"Running on {training_device}")
     model.to(training_device)
 
     optimizer = Adam(model.parameters(), lr=learning_rate)
@@ -20,7 +20,7 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
     mlflow.set_experiment(experiment_name)  # Create or use existing experiment
 
     with mlflow.start_run() as run:
-        mlflow.log_params(model_args)
+        # mlflow.log_params(model_args)
 
         for epoch in range(epochs):
             print(f"Epoch number : {epoch}")
@@ -81,21 +81,27 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
             mlflow.log_metric("train_accuracy", train_accuracy, epoch)
 
 
-# **Main Execution**
 if __name__ == "__main__":
+    experiment_name = "cosmetic_efficacy_experiment"
+    train_dataloader, val_dataloader = create_dataloaders()
+
+    vocab_size = 5868
+    embed_size = 128
+    num_labels = 5  # Number of skin types
+
     # Transformer encoder parameters
-    model_args = {
-        'd_model': 768,  # Embedding dimension
-        'nhead': 2,  # Number of heads in multi-head attention
-        'num_transformer_layers': 6,  # Number of transformer encoder layers
-        'dim_feedforward': 1024,  # Dimension of feedforward network in the transformer
-        'dropout': 0.1,  # Dropout probability
-    }
+    # model_args = {
+    #     'd_model': 768,  # Embedding dimension
+    #     'nhead': 2,  # Number of heads in multi-head attention
+    #     'num_transformer_layers': 6,  # Number of transformer encoder layers
+    #     'dim_feedforward': 1024,  # Dimension of feedforward network in the transformer
+    #     'dropout': 0.1,  # Dropout probability
+    # }
+    #
+    # ingredients_vector_len = 216
 
-experiment_name = "cosmetic_efficacy_experiment"
-ingredients_vector_len = 216
-train_dataloader, val_dataloader = create_dataloaders()
-model = CosmeticEfficacyModel(ingredients_vector_len, 5, [768 // 2, (768 // 2) // 2], **model_args)
+    model = SkincareClassifier(vocab_size, embed_size, num_labels)
+    # model = CosmeticEfficacyModel(ingredients_vector_len, 5, [768 // 2, (768 // 2) // 2], **model_args)
 
-train_model(model, train_dataloader, val_dataloader, epochs=50, learning_rate=0.001,
-            experiment_name=experiment_name)
+    train_model(model, train_dataloader, val_dataloader, epochs=50, learning_rate=0.001,
+                experiment_name=experiment_name)
