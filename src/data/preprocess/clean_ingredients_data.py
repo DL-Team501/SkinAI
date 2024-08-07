@@ -1,17 +1,82 @@
 import os
 import re
+from typing import List
+
 import pandas as pd
 
 from src.consts import ROOT_PATH
 
+skin_types = ['Combination', 'Dry', 'Normal', 'Oily', 'Sensitive']
 
-def get_formatted_data():
+
+def get_sephora_csv() -> pd.DataFrame:
+    data_file = os.path.join(ROOT_PATH, 'data', 'raw', 'sephora.csv')
+    df = pd.read_csv(data_file)
+    df = filter_no_ingredients(df)
+    df['clean_ingredients'] = df['Ingredient List'].apply(clean_ingredients)
+    df['Skincare Concerns'] = df['Skincare Concerns'].apply(handle_and)
+    df['Skin Types'] = df['Skin Types'].apply(handle_and)
+    df['Skincare Concerns'] = df['Skincare Concerns'].apply(strip_strings)
+    df['Skin Types'] = df['Skin Types'].apply(strip_strings)
+    df['skin_types_list'] = df['Skin Types'].apply(lambda x: create_binary_list(x, skin_types))
+
+    return df
+
+
+def handle_and(strings: List[str]) -> List[str]:
+    processed_strings = []
+
+    for s in strings:
+        if s.startswith('and') or s[1:4] == 'and':
+            curr_processed_strings = [s.replace('and', '', 1)]
+        else:
+            curr_processed_strings = s.split('and')
+
+        processed_strings.extend(curr_processed_strings)
+
+    return processed_strings
+
+
+def strip_strings(strings: List[str]) -> List[str]:
+    return [s.strip() for s in strings]
+
+
+def create_binary_list(input_list, target_strings):
+    return [1 if target in input_list else 0 for target in target_strings]
+
+
+def filter_no_ingredients(df):
+    return df[df['Ingredient List'].apply(lambda x: len(x) > 0)]
+
+
+def get_cosmetic_csv() -> pd.DataFrame:
     data_file = os.path.join(ROOT_PATH, 'data', 'raw', 'cosmetic.csv')
     df = pd.read_csv(data_file)
     df = filter_bad_rows(df)
-
-    # Apply the cleaning function to the 'ingredients list' column
     df['clean_ingredients'] = df['ingredients'].apply(clean_ingredients)
+
+    df_skin_types = df[skin_types]
+    df.loc[(df_skin_types == 0).all(axis=1), 'Normal'] = 1
+
+    df['skin_types_list'] = df.apply(lambda row: [row[col] for col in skin_types], axis=1)
+    df = df.drop(columns=['rank', 'price', 'ingredients'] + skin_types)
+
+    return df
+
+
+def get_all_data_df() -> pd.DataFrame:
+    columns_to_keep = ['clean_ingredients', 'skin_types_list']
+
+    cosmetic_df = get_cosmetic_csv()[columns_to_keep]
+    sephora_df = get_sephora_csv()[columns_to_keep]
+
+    df = pd.concat([cosmetic_df, sephora_df], ignore_index=True)
+
+    return df
+
+
+def get_formatted_data():
+    df = get_all_data_df()
 
     # Transform the ingredients list to indexes list
     unique_ingredients = get_unique_ingredients(df['clean_ingredients'])
@@ -24,14 +89,6 @@ def get_formatted_data():
     # Pad lists in the 'tokenized_ingredients' column with zeros to make their length equal
     df['tokenized_ingredients'] = df['tokenized_ingredients'].apply(
         lambda row: pad_list_with_zeros(row, max_ingredients_list_length))
-
-    # Put 1 in normal skin type column if all the skin types are 0
-    skin_type_cols = ['Combination', 'Dry', 'Normal', 'Oily', 'Sensitive']
-    df_skin_types = df[skin_type_cols]
-    df.loc[(df_skin_types == 0).all(axis=1), 'Normal'] = 1
-
-    df['skin_types_list'] = df.apply(lambda row: [row[col] for col in skin_type_cols], axis=1)
-    df = df.drop(columns=['rank', 'price', 'ingredients'] + skin_type_cols)
 
     return df
 
