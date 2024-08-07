@@ -83,9 +83,9 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
 
 if __name__ == "__main__":
     experiment_name = "cosmetic_efficacy_experiment"
-    train_dataloader, val_dataloader = create_dataloaders()
+    train_dataloader, val_dataloader, skin_care_data = create_dataloaders()
 
-    vocab_size = 5868
+    vocab_size = len(skin_care_data.ingredient_index_dict.keys())
     embed_size = 128
     num_labels = 5  # Number of skin types
 
@@ -99,8 +99,9 @@ if __name__ == "__main__":
     # }
     #
     # ingredients_vector_len = 216
+    max_length = skin_care_data.data['tokenized_ingredients'].apply(len).max()
 
-    model = SkincareClassifier(vocab_size, embed_size, num_labels)
+    model = SkincareClassifier(vocab_size, embed_size, num_labels, max_length)
     # model = CosmeticEfficacyModel(ingredients_vector_len, 5, [768 // 2, (768 // 2) // 2], **model_args)
 
     train_model(model, train_dataloader, val_dataloader, epochs=50, learning_rate=0.001,
