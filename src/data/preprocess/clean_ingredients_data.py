@@ -1,6 +1,7 @@
 import os
 import re
-from typing import List
+from dataclasses import dataclass
+from typing import List, Dict
 
 import pandas as pd
 
@@ -75,7 +76,13 @@ def get_all_data_df() -> pd.DataFrame:
     return df
 
 
-def get_formatted_data():
+@dataclass
+class SkinCareData:
+    data: pd.DataFrame
+    ingredient_index_dict: Dict
+
+
+def get_formatted_data() -> SkinCareData:
     df = get_all_data_df()
 
     # Transform the ingredients list to indexes list
@@ -90,7 +97,7 @@ def get_formatted_data():
     df['tokenized_ingredients'] = df['tokenized_ingredients'].apply(
         lambda row: pad_list_with_zeros(row, max_ingredients_list_length))
 
-    return df
+    return SkinCareData(data=df, ingredient_index_dict=ingredient_index_dict)
 
 
 def filter_bad_rows(df):
