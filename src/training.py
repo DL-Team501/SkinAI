@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import mlflow
 
-from torch.optim import Adam
+from torch.optim import AdamW
 
 from src.models.ingredients_classification_model import SkincareClassifier
 from src.training_config import training_device
@@ -14,7 +14,7 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
     print(f"Running on {training_device}")
     model.to(training_device)
 
-    optimizer = Adam(model.parameters(), lr=learning_rate)
+    optimizer = AdamW(model.parameters(), lr=learning_rate)
     criterion = nn.BCEWithLogitsLoss()  # For multi-label classification
 
     mlflow.set_experiment(experiment_name)  # Create or use existing experiment
