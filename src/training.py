@@ -7,6 +7,7 @@ from torch.optim import AdamW
 from src.models.ingredients_classification_model import SkincareClassifier
 from src.training_config import training_device
 from src.data.dataset import create_dataloaders
+from src.consts import INGREDIENT_LIST_CLASSIFICATION_LABELS
 
 
 def train_model(model, train_loader, val_loader, epochs, learning_rate, experiment_name):
@@ -85,9 +86,9 @@ if __name__ == "__main__":
     experiment_name = "cosmetic_efficacy_experiment"
     train_dataloader, val_dataloader, skin_care_data = create_dataloaders()
 
-    vocab_size = len(skin_care_data.ingredient_index_dict.keys())
+    vocab_size = len(skin_care_data.ingredient_index_dict)
     ingredients_vector_len = skin_care_data.data['tokenized_ingredients'].apply(len).max()
-    num_labels = 5  # Number of skin types
+    num_labels = len(INGREDIENT_LIST_CLASSIFICATION_LABELS)  # Number of skin types
 
     # Transformer encoder parameters
     model_args = {
