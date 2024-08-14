@@ -16,7 +16,7 @@ class SkinCareProductsDataset(Dataset):
     def __getitem__(self, idx):
         sample = self.data.iloc[idx]
         tokenized_ingredients = torch.tensor(sample['tokenized_ingredients'], dtype=torch.long)
-        skin_types = torch.tensor(sample['skin_types_list'], dtype=torch.float32)
+        skin_types = torch.tensor(sample['one_hot_labels'], dtype=torch.float32)
 
         return tokenized_ingredients, skin_types
 
