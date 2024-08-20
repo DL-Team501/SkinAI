@@ -1,17 +1,22 @@
 import os
 import re
+import ast
+from dataclasses import dataclass
+from typing import Dict
+
 import pandas as pd
 
-from src.consts import ROOT_PATH
+from src.consts import ROOT_PATH, INGREDIENT_LIST_CLASSIFICATION_LABELS
 
 
-def get_formatted_data():
-    data_file = os.path.join(ROOT_PATH, 'data', 'raw', 'cosmetic.csv')
-    df = pd.read_csv(data_file)
-    df = filter_bad_rows(df)
+@dataclass
+class SkinCareData:
+    data: pd.DataFrame
+    ingredient_index_dict: Dict
 
-    # Apply the cleaning function to the 'ingredients list' column
-    df['clean_ingredients'] = df['ingredients'].apply(clean_ingredients)
+
+def get_formatted_data() -> SkinCareData:
+    df = load_sephora_csv_to_df()
 
     # Transform the ingredients list to indexes list
     unique_ingredients = get_unique_ingredients(df['clean_ingredients'])
@@ -25,56 +30,57 @@ def get_formatted_data():
     df['tokenized_ingredients'] = df['tokenized_ingredients'].apply(
         lambda row: pad_list_with_zeros(row, max_ingredients_list_length))
 
-    # Put 1 in normal skin type column if all the skin types are 0
-    skin_type_cols = ['Combination', 'Dry', 'Normal', 'Oily', 'Sensitive']
-    df_skin_types = df[skin_type_cols]
-    df.loc[(df_skin_types == 0).all(axis=1), 'Normal'] = 1
-
-    df['skin_types_list'] = df.apply(lambda row: [row[col] for col in skin_type_cols], axis=1)
-    df = df.drop(columns=['rank', 'price', 'ingredients'] + skin_type_cols)
-
-    return df
+    return SkinCareData(data=df, ingredient_index_dict=ingredient_index_dict)
 
 
-def filter_bad_rows(df):
-    df = df[~df['ingredients'].astype(str).str.startswith("Visit")]
-    df = df[~df['ingredients'].astype(str).str.startswith("No Info")]
-    mask = df['ingredients'].astype(str).str.endswith("for the most up to date list of ingredients.")
-    df.loc[mask, 'ingredients'] = df.loc[mask, 'ingredients'].astype(str).apply(remove_after_newline)
-    df = df[df['ingredients'].astype(str).str.contains(',')]
+def load_sephora_csv_to_df() -> pd.DataFrame:
+    data_file = os.path.join(ROOT_PATH, 'data', 'raw', 'sephora_data_clean.csv')
+    df = pd.read_csv(data_file)
+    df = filter_no_ingredients(df)
+    df['clean_ingredients'] = df['Ingredient List'].apply(clean_ingredients)
+    one_hot_labels_df = df['Skin Types and Concerns'].apply(one_hot_labels)
+    df = pd.concat([df, one_hot_labels_df], axis=1)
+    df['one_hot_labels'] = df[INGREDIENT_LIST_CLASSIFICATION_LABELS].apply(lambda row: row.tolist(), axis=1)
+    columns_to_keep = ['clean_ingredients', 'one_hot_labels']
 
-    return df
+    return df[columns_to_keep]
 
 
-def remove_after_newline(text):
-    last_newline_index = text.rfind('\n')
-    if last_newline_index != -1:
-        return text[:last_newline_index].rstrip('\n')
+def one_hot_labels(skin_types_concerns):
+    if isinstance(skin_types_concerns, str):
+        skin_types_concerns = ast.literal_eval(skin_types_concerns)
+
+    vector = {cls: 0 for cls in INGREDIENT_LIST_CLASSIFICATION_LABELS}
+    skin_types_concerns_lower = [item.lower() for item in skin_types_concerns]
+
+    for cls in INGREDIENT_LIST_CLASSIFICATION_LABELS:
+        if any(cls in item for item in skin_types_concerns_lower):
+            vector[cls] = 1
+
+    return pd.Series(vector)
+
+
+def filter_no_ingredients(df):
+    return df[df['Ingredient List'].apply(lambda x: len(x) > 0)]
+
+
+def clean_ingredients(ingredient_list):
+    # If the ingredient_list is already a list, clean it directly
+    if isinstance(ingredient_list, list):
+        ingredients = ingredient_list
+    # If it's a string, convert to a list first
+    elif isinstance(ingredient_list, str):
+        ingredients = ast.literal_eval(ingredient_list)
     else:
-        return text
+        print("No list")
+        # Handle cases where the ingredient list is not a list or string (e.g., NaN)
+        return []
 
+    # Remove text after '-', remove special characters, and strip whitespace
+    ingredients = [re.sub(r'^-.*:', '', ing).strip().lower() for ing in ingredients]
+    ingredients = [re.sub(r'[^a-zA-Z0-9\s]', '', ing).strip() for ing in ingredients]
 
-def clean_ingredients(text):
-    """
-  Cleans the ingredient text.
-
-  Args:
-      text: String containing the ingredient list.
-
-  Returns:
-      A string with cleaned ingredients in lowercase, with extra spaces removed.
-  """
-    # Lowercase
-    text = text.lower()
-
-    # Remove extra spaces
-    text = re.sub(r'\s+', ' ', text).strip()
-    ingredient_list = [ingredient.strip() for ingredient in text.split(', ')]
-    ingredient_list[-1] = ingredient_list[-1].rstrip('. ')
-    ingredient_list[-1] = ingredient_list[-1].rstrip('.')
-    ingredient_list = [item for item in ingredient_list if item != ""]
-
-    return ingredient_list
+    return ingredients
 
 
 def get_unique_ingredients(clean_ingredients_lists):
