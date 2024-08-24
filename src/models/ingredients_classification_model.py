@@ -30,7 +30,7 @@ class SkincareClassifier(nn.Module):
             nn.TransformerEncoderLayer(d_model=embed_size, nhead=nhead),
             num_layers=num_layers
         )
-        self.classifier = ClassificationHead(embed_size, num_labels, hidden_sizes=[embed_size // 2], dropout=0.2)
+        self.classifier = ClassificationHead(embed_size, num_labels, hidden_sizes=[embed_size // 2], dropout=0.4)
 
     def forward(self, input_ids):
         embedded = self.embedding(input_ids)
