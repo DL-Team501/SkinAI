@@ -1,3 +1,5 @@
+import json
+
 import torch
 import torch.nn as nn
 import mlflow
@@ -86,14 +88,24 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
 
             scheduler.step(val_loss / len(val_loader.dataset))
 
+    scripted_model = torch.jit.script(model)
+    scripted_model.save('ingredients_classifier.pt')
+
 
 if __name__ == "__main__":
+    # Run in terminal: mlflow server --host 127.0.0.1 --port 8080
     experiment_name = "cosmetic_efficacy_experiment_weight_decay"
     train_dataloader, val_dataloader, skin_care_data = create_dataloaders()
 
     vocab_size = len(skin_care_data.ingredient_index_dict)
     ingredients_vector_len = skin_care_data.data['tokenized_ingredients'].apply(len).max()
     num_labels = len(INGREDIENT_LIST_CLASSIFICATION_LABELS)  # Number of skin types
+
+    with open("ingredient_index_dict.json", "w") as outfile:
+        outfile.write(json.dumps(skin_care_data.ingredient_index_dict))
+
+    with open("ingredients_vector_len.json", "w") as outfile:
+        outfile.write(json.dumps({"ingredients_vector_len" : int(ingredients_vector_len)}))
 
     # Transformer encoder parameters
     model_args = {
@@ -104,5 +116,5 @@ if __name__ == "__main__":
 
     model = SkincareClassifier(vocab_size, num_labels, ingredients_vector_len, **model_args)
 
-    train_model(model, train_dataloader, val_dataloader, epochs=50, learning_rate=0.001,
+    train_model(model, train_dataloader, val_dataloader, epochs=2, learning_rate=0.001,
                 experiment_name=experiment_name, model_args=model_args)
