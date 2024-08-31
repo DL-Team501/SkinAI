@@ -20,7 +20,7 @@ def get_formatted_data() -> SkinCareData:
 
     # Transform the ingredients list to indexes list
     unique_ingredients = get_unique_ingredients(df['clean_ingredients'])
-    ingredient_index_dict = {ingredient: index + 1 for index, ingredient in enumerate(unique_ingredients)}
+    ingredient_index_dict = {ingredient: index for index, ingredient in enumerate(unique_ingredients)}
 
     df['tokenized_ingredients'] = df['clean_ingredients'].apply(
         lambda row: map_ingredient_to_index(row, ingredient_index_dict))
