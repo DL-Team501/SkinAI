@@ -16,7 +16,7 @@ class SkinCareData:
 
 
 def get_formatted_data() -> SkinCareData:
-    df = load_sephora_csv_to_df()
+    df = load_old_sephora_csv_to_df()
 
     # Transform the ingredients list to indexes list
     unique_ingredients = get_unique_ingredients(df['clean_ingredients'])
@@ -31,6 +31,16 @@ def get_formatted_data() -> SkinCareData:
         lambda row: pad_list_with_zeros(row, max_ingredients_list_length))
 
     return SkinCareData(data=df, ingredient_index_dict=ingredient_index_dict)
+
+
+def load_old_sephora_csv_to_df() -> pd.DataFrame:
+    data_file = os.path.join(ROOT_PATH, 'data', 'raw', 'cosmetic.csv')
+    df = pd.read_csv(data_file)
+    df['clean_ingredients'] = df['ingredients'].str.split(', ')
+    df['one_hot_labels'] = df[['Combination', 'Dry', 'Normal', 'Oily', 'Sensitive']].values.tolist()
+    columns_to_keep = ['clean_ingredients', 'one_hot_labels']
+
+    return df[columns_to_keep]
 
 
 def load_sephora_csv_to_df() -> pd.DataFrame:
@@ -103,7 +113,7 @@ def map_ingredient_to_index(ingredient_list, ingredient_index_dict):
     for ingredient in ingredient_list:
         if ingredient not in ingredient_index_dict.keys():
             print(f'NOT FOUND: "{ingredient}"')
-        ingredient_list_indexes.append(ingredient_index_dict.get(ingredient))
+        ingredient_list_indexes.append(ingredient_index_dict.get(ingredient, 0))
 
     return ingredient_list_indexes
 

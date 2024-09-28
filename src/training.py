@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import mlflow
 
-from torch.optim import AdamW
+from torch.optim import AdamW, Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from src.models.ingredients_classification_model import SkincareClassifier
@@ -18,11 +18,12 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
     print(f"Running on {training_device}")
     model.to(training_device)
 
-    optimizer = AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
+    # optimizer = AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
+    optimizer = Adam(model.parameters(), lr=learning_rate)
+    # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
     criterion = nn.BCEWithLogitsLoss()  # For multi-label classification
 
-    mlflow.set_tracking_uri(uri="http://127.0.0.1:8080")
+    # mlflow.set_tracking_uri(uri="http://127.0.0.1:8080")
     mlflow.set_experiment(experiment_name)  # Create or use existing experiment
 
     with mlflow.start_run():
@@ -86,7 +87,7 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
             mlflow.log_metric("val_accuracy", val_accuracy, epoch)
             mlflow.log_metric("train_accuracy", train_accuracy, epoch)
 
-            scheduler.step(val_loss / len(val_loader.dataset))
+            # scheduler.step(val_loss / len(val_loader.dataset))
 
     scripted_model = torch.jit.script(model)
     scripted_model.save('ingredients_classifier.pt')
@@ -94,7 +95,7 @@ def train_model(model, train_loader, val_loader, epochs, learning_rate, experime
 
 if __name__ == "__main__":
     # Run in terminal: mlflow server --host 127.0.0.1 --port 8080
-    experiment_name = "cosmetic_efficacy_experiment_weight_decay"
+    experiment_name = "old_dataset"
     train_dataloader, val_dataloader, skin_care_data = create_dataloaders()
 
     vocab_size = len(skin_care_data.ingredient_index_dict)
@@ -105,7 +106,7 @@ if __name__ == "__main__":
         outfile.write(json.dumps(skin_care_data.ingredient_index_dict))
 
     with open("ingredients_vector_len.json", "w") as outfile:
-        outfile.write(json.dumps({"ingredients_vector_len" : int(ingredients_vector_len)}))
+        outfile.write(json.dumps({"ingredients_vector_len": int(ingredients_vector_len)}))
 
     # Transformer encoder parameters
     model_args = {
@@ -116,5 +117,5 @@ if __name__ == "__main__":
 
     model = SkincareClassifier(vocab_size, num_labels, ingredients_vector_len, **model_args)
 
-    train_model(model, train_dataloader, val_dataloader, epochs=2, learning_rate=0.001,
+    train_model(model, train_dataloader, val_dataloader, epochs=30, learning_rate=0.001,
                 experiment_name=experiment_name, model_args=model_args)
